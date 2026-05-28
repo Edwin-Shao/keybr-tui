@@ -189,6 +189,7 @@ impl SavedStats {
     }
 
     /// Save stats to disk, creating directories if needed.
+    /// Before writing, copies the existing file to `stats.json.bak` as a safety net.
     pub fn save(&self) -> color_eyre::Result<()> {
         let path = match Self::path() {
             Some(p) => p,
@@ -197,6 +198,12 @@ impl SavedStats {
 
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
+        }
+
+        // Backup existing save before overwriting
+        if path.exists() {
+            let backup = path.with_extension("json.bak");
+            let _ = std::fs::copy(&path, &backup);
         }
 
         let contents = serde_json::to_string_pretty(self)?;
