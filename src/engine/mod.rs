@@ -5,6 +5,7 @@ pub mod generator;
 pub mod scheduler;
 pub mod transition;
 
+pub use dictionary::Translations;
 pub use filter::LetterFilter;
 pub use generator::WordGenerator;
 pub use scheduler::LetterScheduler;

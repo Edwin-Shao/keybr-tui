@@ -18,18 +18,32 @@ pub fn render(app: &App, frame: &mut Frame, area: Rect) {
         .alignment(Alignment::Left)
         .block(Block::default().borders(Borders::NONE));
 
-    // Center vertically inside whatever the parent layout gave us, then
-    // narrow horizontally to ~80% of that strip.
+    // Center vertically, narrow horizontally
     let v_split = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Percentage(33),
             Constraint::Min(0),
+            Constraint::Length(2), // Translation line
             Constraint::Percentage(33),
         ])
         .split(area);
     let inner = centered_rect(v_split[1], 80);
     frame.render_widget(para, inner);
+
+    // Render translation below typing area
+    if let Some(ref translation) = app.current_translation {
+        let trans_span = Span::styled(
+            translation.clone(),
+            Style::default().fg(Color::Cyan),
+        );
+        let trans_line = Line::from(trans_span);
+        let trans_para = Paragraph::new(trans_line)
+            .alignment(Alignment::Center)
+            .block(Block::default().borders(Borders::NONE));
+        let trans_area = centered_rect(v_split[2], 80);
+        frame.render_widget(trans_para, trans_area);
+    }
 }
 
 /// Build the styled span list for the current generated text.

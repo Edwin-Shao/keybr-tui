@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
 use crate::config::{Config, ErrorModeSerde};
-use crate::engine::{LetterFilter, LetterScheduler, WordGenerator};
+use crate::engine::{LetterFilter, LetterScheduler, Translations, WordGenerator};
 use crate::metrics::KeyStats;
 use crate::persistence::{today_date_string, SavedKeyStats, SavedLessonResult, SavedStats};
 
@@ -107,11 +107,46 @@ pub struct App {
     /// YYYY-MM-DD this counter refers to. Reset on day rollover.
     pub today_date: String,
 
+    // --- Translation ---
+    /// English→Chinese word translations (loaded once from embedded data).
+    pub translations: Translations,
+    /// Translation of the word currently being typed, if available.
+    pub current_translation: Option<String>,
+
     // --- Navigation state ---
     /// Selected item index in the main menu.
     pub menu_selection: usize,
     /// Selected item index in the settings screen.
     pub settings_selection: usize,
+}
+
+impl App {
+    /// Return the translation for the word at the current cursor position.
+    pub fn update_current_translation(&mut self) {
+        self.current_translation = self.word_around_cursor().and_then(|w| {
+            self.translations.get(w).map(|s| s.to_string())
+        });
+    }
+
+    /// Byte-level word extraction around cursor position.
+    fn word_around_cursor(&self) -> Option<&str> {
+        let text = self.generated_text.as_str();
+        if text.is_empty() {
+            return None;
+        }
+        let len = text.len();
+        let pos = self.cursor_pos.min(len.saturating_sub(1));
+        let start = text[..=pos]
+            .rfind(' ')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        let end = text[pos..]
+            .find(' ')
+            .map(|i| pos + i)
+            .unwrap_or(len);
+        let word = &text[start..end];
+        if word.is_empty() { None } else { Some(word) }
+    }
 }
 
 impl App {
@@ -204,7 +239,9 @@ impl App {
         generator.set_natural_words(true);
         let text = generator.generate_fragment(&filter, 100);
 
-        App {
+        let translations = Translations::from_embedded();
+
+        let mut app = App {
             running: true,
             screen: AppScreen::Menu,
             generated_text: text,
@@ -231,9 +268,13 @@ impl App {
             daily_goal_minutes: 30,
             today_seconds_practiced,
             today_date,
+            translations,
+            current_translation: None,
             menu_selection: 0,
             settings_selection: 0,
-        }
+        };
+        app.update_current_translation();
+        app
     }
 
     /// Target WPM for display (WPM = CPM / 5).
@@ -370,6 +411,7 @@ impl App {
         self.lesson_positions = 0;
         self.lesson_errors = 0;
         self.screen = AppScreen::Typing;
+        self.update_current_translation();
     }
 
     /// Convert current app state to a `SavedStats` for persistence.

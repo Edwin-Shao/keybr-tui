@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::engine::filter::LetterFilter;
 use crate::engine::generator::SimpleRng;
 
@@ -7,6 +9,10 @@ use crate::engine::generator::SimpleRng;
 /// (10,000 most common English words), normalized to ASCII lowercase a–z only,
 /// length 2..=12, one word per line. See `data/README.md`.
 const RAW_WORDLIST: &str = include_str!("../../data/wordlist-en.txt");
+
+/// Embedded English→Chinese translations, generated from MyMemory API.
+/// JSON: { "word": "翻译" }.
+const RAW_TRANSLATIONS: &str = include_str!("../../data/translations.json");
 
 /// Dictionary of real English words, indexed for fast filter-aware lookup.
 ///
@@ -175,6 +181,34 @@ impl Dictionary {
 #[inline]
 fn word_chars_allowed(word: &str, filter: &LetterFilter) -> bool {
     word.chars().all(|c| filter.is_allowed(c))
+}
+
+/// Lazy-loaded English→Chinese translation map. Parsed once on first access.
+pub struct Translations {
+    map: HashMap<String, String>,
+}
+
+impl Translations {
+    pub fn from_embedded() -> Self {
+        let map: HashMap<String, String> =
+            serde_json::from_str(RAW_TRANSLATIONS).unwrap_or_default();
+        Self { map }
+    }
+
+    pub fn get(&self, word: &str) -> Option<&str> {
+        self.map.get(word).map(|s| s.as_str()).filter(|s| !s.is_empty())
+    }
+
+    #[allow(dead_code)]
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+}
+
+impl Default for Translations {
+    fn default() -> Self {
+        Self::from_embedded()
+    }
 }
 
 #[cfg(test)]

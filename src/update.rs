@@ -137,6 +137,7 @@ fn handle_typing_key(app: &mut App, key: crossterm::event::KeyEvent) {
             app.first_attempt_correct.remove(&app.cursor_pos);
             app.recovered_positions.remove(&app.cursor_pos);
             app.key_target_start = Some(Instant::now());
+            app.update_current_translation();
         }
 
         // Typing input — includes space
@@ -190,6 +191,7 @@ fn handle_typed_char(app: &mut App, typed: char) {
         app.lesson_correct += 1;
         app.cursor_pos += 1;
         app.key_target_start = Some(Instant::now());
+        app.update_current_translation();
 
         if app.cursor_pos >= app.generated_text.chars().count() {
             let lesson_seconds = app
@@ -219,6 +221,7 @@ fn handle_typed_char(app: &mut App, typed: char) {
                 app.error_positions.insert(pos);
                 app.cursor_pos += 1;
                 app.key_target_start = Some(Instant::now());
+                app.update_current_translation();
 
                 if app.cursor_pos >= app.generated_text.chars().count() {
                     let lesson_seconds = app
