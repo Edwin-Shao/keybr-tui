@@ -7,183 +7,122 @@
           |___/
 
   type. learn. master.
+  打字 · 学习 · 精通
 ```
 
-# keybr-tui
+# keybr-tui ⌨️
 
-[![CI](https://github.com/y0sif/keybr-tui/actions/workflows/ci.yml/badge.svg)](https://github.com/y0sif/keybr-tui/actions/workflows/ci.yml) [![Crates.io](https://img.shields.io/crates/v/keybr-tui.svg)](https://crates.io/crates/keybr-tui) [![docs.rs](https://img.shields.io/docsrs/keybr-tui)](https://docs.rs/keybr-tui) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![MSRV](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org)
+终端打字练习工具，自适应学习算法 + 实时中文翻译。
 
-A terminal typing trainer with adaptive learning, inspired by [keybr.com](https://www.keybr.com).
+A terminal typing trainer with adaptive learning and real-time Chinese translation.
 
-keybr-tui generates practice text using phonetic Markov chains and adapts to your weaknesses in real time. Letters are introduced progressively as you demonstrate proficiency, so you always practice what you need most.
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![MSRV](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org)
 
-## Features
+---
 
-- **Adaptive text generation** using phonetic Markov chains (faithful port of the keybr.com algorithm)
-- **Per-key confidence tracking** with exponential smoothing of reaction times
-- **Progressive letter unlocking** based on your performance against a target speed
-- **Persistent progress** across sessions (stats and config saved automatically)
-- **Backspace and error recovery** with two error modes (forgive mistakes / stop on error)
-- **Lesson summary** after each practice round showing WPM, accuracy, and weakest keys
-- **Progress view** to review per-key statistics
-- **Configurable settings** (target WPM, error mode, fragment length)
-- **Minimalist terminal-native UI** built with ratatui
+## 功能 / Features
 
-## Install
+- **自适应文本生成** — 基于英语语音 Markov 链生成练习文本，忠实复刻 keybr.com 算法
+- **整键置信度追踪** — 指数平滑反应时间，实时评估每个键的掌握程度
+- **渐进式字母解锁** — 从 6 个字母开始，达标后自动解锁新字母
+- **中文翻译** — 光标所在单词下方显示中文释义，边打字边背单词（7697 个词条）
+- **自动备份** — 每次保存前自动备份旧存档（`stats.json.bak`），不怕崩档
+- **持久进度** — 跨会话保存，重启不丢
+- **两种纠错模式** — Forgive（容错前进）/ Stop（停在原地）
+- **练习总结** — 每轮显示 WPM、准确率、最弱键
+- **统计面板** — 查看各键详细数据
+- **可配置** — 目标速度、纠错模式、文本长度均可调
 
-### Quick install (Linux & macOS)
+---
+
+## 安装 / Install
 
 ```bash
-curl -sSf https://y0sif.github.io/keybr-tui/install.sh | sh
+cargo install --git https://github.com/Edwin-Shao/keybr-tui
 ```
 
-The script downloads the latest prebuilt binary for your platform and installs it to `/usr/local/bin` (or `~/.local/bin` if not root). Pin a specific version with `KEYBR_TUI_VERSION=v0.1.0`.
+需要 [Rust](https://rustup.rs/) 1.75+。
 
-### From crates.io
-
-```bash
-cargo install keybr-tui
-```
-
-### Prebuilt binary
-
-Each tagged release on the [releases page](https://github.com/y0sif/keybr-tui/releases) ships prebuilt binaries for Linux (x86_64), macOS (Intel and Apple Silicon), and Windows (x86_64). Unix archives are `.tar.gz`, Windows is `.zip`.
+或从源码安装：
 
 ```bash
-tar -xzf keybr-tui-x86_64-unknown-linux-gnu.tar.gz
-./keybr-tui
-```
-
-### From source
-
-```bash
-git clone https://github.com/y0sif/keybr-tui.git
+git clone https://github.com/Edwin-Shao/keybr-tui.git
 cd keybr-tui
 cargo install --path .
 ```
 
-## Usage
+---
+
+## 使用 / Usage
 
 ```bash
-keybr-tui [OPTIONS]
+keybr-tui
 ```
 
-### Options
+### 选项 / Options
 
 | Flag | Description |
 |------|-------------|
-| `--target-wpm <N>` | Set target typing speed in words per minute (default: 35) |
-| `--error-mode <MODE>` | `move-on` (default) or `stop-on-error` |
-| `--reset` | Delete saved stats and start fresh |
-| `--data-dir` | Print the data directory path and exit |
-| `--help` | Show help |
-| `--version` | Show version |
+| `--target-wpm <N>` | 目标速度 WPM（默认 35） |
+| `--error-mode <MODE>` | `move-on` 容错 / `stop-on-error` 精准 |
+| `--reset` | 清除存档，重新开始 |
+| `--data-dir` | 打印数据目录路径 |
+| `--help` / `--version` | 帮助 / 版本 |
 
-### Keyboard Shortcuts
+### 快捷键 / Shortcuts
 
 | Key | Action |
 |-----|--------|
-| `Esc` | Return to menu / quit |
-| `Enter` | Select menu item / dismiss lesson summary |
-| Arrow keys | Navigate menus and settings |
-| `Left`/`Right` | Adjust settings values |
+| `Esc` | 返回菜单 / 退出 |
+| `Enter` | 确认 / 开始练习 |
+| `Tab` | 切换纠错模式 |
+| `↑↓` | 导航菜单 |
+| `←→` | 调整设置值 |
+| `Ctrl+C` | 强制退出 |
 
-## How the Adaptive Algorithm Works
+---
 
-keybr-tui uses a phonetic text generation algorithm ported from [keybr.com](https://github.com/aradzie/keybr.com):
+## 自适应算法 / Algorithm
 
-1. **Letter scheduling**: You start with a small set of letters (6). The scheduler tracks your per-key reaction time using exponential smoothing and computes a confidence score against your target speed.
-2. **Unlocking**: When all active letters reach sufficient confidence, a new letter is unlocked from a frequency-ordered list.
-3. **Focus key**: The weakest key among your active set becomes the "focus key" and appears more frequently in generated text.
-4. **Text generation**: A Markov chain trained on English phonetic patterns generates pronounceable pseudo-words using only your active letters, with bias toward the focus key.
-5. **Tracking**: Each keystroke's reaction time is recorded, filtered, and smoothed to update your per-key statistics.
+1. **字母调度**：从 6 个字母开始，追踪每个键的反应时间
+2. **解锁机制**：当前所有字母达标后，按词频顺序解锁下一个
+3. **聚焦键**：最弱的键在练习文本中出现频率最高
+4. **文本生成**：用英语语音规律生成可读的伪单词（或从 10000 真实单词词典中抽取）
+5. **追踪反馈**：每次击键时间被记录、滤波、平滑，更新统计
 
-## Project Structure
+---
 
-```text
-keybr-tui/
-├── src/
-│   ├── main.rs           # Entry point
-│   ├── app.rs            # Central state (MVU)
-│   ├── update.rs         # State transitions
-│   ├── ui.rs             # Rendering (read-only state)
-│   ├── events.rs         # Input + tick event channel
-│   ├── tui.rs            # Terminal setup/teardown
-│   ├── metrics.rs        # Per-key statistics
-│   ├── config.rs         # Config file parsing
-│   ├── persistence.rs    # Stats save/load
-│   ├── engine/           # Adaptive text generation
-│   └── components/       # UI widgets
-├── docs/                 # User-facing docs (comparison, FAQ, troubleshooting)
-└── .github/workflows/    # CI and release
+## 存档位置 / Data
+
+```
+macOS:  ~/Library/Application Support/keybr-tui/
+Linux:  ~/.local/share/keybr-tui/
+Windows:  C:\Users\<User>\AppData\Roaming\keybr-tui\
 ```
 
-## Development
+| 文件 | 说明 |
+|------|------|
+| `stats.json` | 练习统计 |
+| `stats.json.bak` | 自动备份 |
+| `config.toml` | 配置文件 |
 
-Build:
+---
+
+## 开发 / Development
 
 ```bash
 cargo build
-```
-
-Run:
-
-```bash
-cargo run
-```
-
-Test:
-
-```bash
 cargo test
-```
-
-Format:
-
-```bash
 cargo fmt --all
-```
-
-Lint:
-
-```bash
 cargo clippy --all-targets -- -D warnings
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution workflow.
+## 致谢 / Credits
 
-## Configuration
-
-Config file location (XDG on Linux):
-
-```text
-~/.config/keybr-tui/config.toml
-```
-
-Example config:
-
-```toml
-target_wpm = 35
-error_mode = "forgive-mistakes"  # or "stop-on-error"
-fragment_length = 100
-```
-
-Stats are saved separately in the data directory. Use `keybr-tui --data-dir` to find it.
-
-## Screenshots
-
-A terminal recording (asciinema/vhs) is on the roadmap. For now, run `cargo install keybr-tui` and try it.
-
-## Documentation
-
-- [docs/comparison.md](docs/comparison.md) — how keybr-tui compares to alternatives
-- [docs/faq.md](docs/faq.md) — frequently asked questions
-- [docs/troubleshooting.md](docs/troubleshooting.md) — common issues and fixes
-
-## Credits
-
-- Algorithm inspired by [keybr.com](https://www.keybr.com) by [aradzie](https://github.com/aradzie/keybr.com)
-- Built with [ratatui](https://ratatui.rs/) and [crossterm](https://github.com/crossterm-rs/crossterm)
+- 算法源自 [keybr.com](https://www.keybr.com) by [aradzie](https://github.com/aradzie/keybr.com)
+- 原项目 [y0sif/keybr-tui](https://github.com/y0sif/keybr-tui)
+- 中文词典 [ECDICT](https://github.com/skywind3000/ECDICT)
+- 基于 [ratatui](https://ratatui.rs/) + [crossterm](https://github.com/crossterm-rs/crossterm)
 
 ## License
 
